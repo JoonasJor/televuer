@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 class TeleVuer:
-    def __init__(self, binocular: bool, use_hand_tracking: bool, img_shape, img_shm_name, cert_file=None, key_file=None, ngrok=False, webrtc=False):
+    def __init__(self, binocular: bool, use_hand_tracking: bool, img_shape, img_shm_name, cert_file=None, key_file=None, ngrok=False, webrtc=False, disable_img_passthrough=False):
         """
         TeleVuer class for OpenXR-based XR teleoperate applications.
         This class handles the communication with the Vuer server and manages the shared memory for image and pose data.
@@ -21,6 +21,8 @@ class TeleVuer:
         :param cert_file: str, path to the SSL certificate file.
         :param key_file: str, path to the SSL key file.
         :param ngrok: bool, whether to use ngrok for tunneling.
+        :param webrtc: bool, whether to use WebRTC for video streaming.
+        :param display_image: bool, whether to display the image in passthrough mode.
         """
         self.binocular = binocular
         self.use_hand_tracking = use_hand_tracking
@@ -49,6 +51,8 @@ class TeleVuer:
 
         existing_shm = shared_memory.SharedMemory(name=img_shm_name)
         self.img_array = np.ndarray(img_shape, dtype=np.uint8, buffer=existing_shm.buf)
+
+        self.disable_img_passthrough = disable_img_passthrough
 
         self.webrtc = webrtc
         if self.binocular and not self.webrtc:
@@ -214,6 +218,10 @@ class TeleVuer:
             )
 
         while True:
+            if self.disable_img_passthrough:
+                await asyncio.sleep(1)
+                continue
+            
             display_image = cv2.cvtColor(self.img_array, cv2.COLOR_BGR2RGB)
             # aspect_ratio = self.img_width / self.img_height
             session.upsert(
@@ -272,6 +280,10 @@ class TeleVuer:
             )
 
         while True:
+            if self.disable_img_passthrough:
+                await asyncio.sleep(1)
+                continue
+    
             display_image = cv2.cvtColor(self.img_array, cv2.COLOR_BGR2RGB)
             # aspect_ratio = self.img_width / self.img_height
             session.upsert(
